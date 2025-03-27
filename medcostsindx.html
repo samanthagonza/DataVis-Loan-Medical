@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Cost Data Visualization</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            background-color: #09010b;
+            color: white;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-right: 1px solid #ccc;
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+        }
+
+        .main-content {
+            margin-left: 270px;
+            padding: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+        }
+
+        button {
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .chart-container {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        #dataset-container {
+            margin-top: 20px;
+        }
+
+        #user-manual-container {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 40%;
+            height: 100%;
+            background: #fff;
+            padding: 10px;
+            border-left: 2px solid #ccc;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        iframe {
+            width: 100%;
+            height: 90%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="title">
+        <h1>Medical Cost Data Visualization</h1>
+    </div>
+
+    <div class="sidebar">
+        <h3>Select Attributes</h3>
+        <label><input type="checkbox" class="attribute" value="region"> Region</label><br>
+        <label><input type="checkbox" class="attribute" value="smoker"> Smoker</label><br>
+        <label><input type="checkbox" class="attribute" value="age"> Age</label><br>
+        <label><input type="checkbox" class="attribute" value="sex"> Sex</label><br>
+        <label><input type="checkbox" class="attribute" value="children"> Number of Children</label><br>
+        <label> X Medical Charges (selected)</label><br><br>
+
+        <h3>Select Chart Type</h3>
+        <select id="chart-type">
+            <option value="BarChart">Bar Chart</option>
+            <option value="LineChart">Line Chart</option>
+            <option value="PieChart">Pie Chart</option>
+        </select>
+        <button id="generate-chart">Generate Chart</button>
+        <button id="display-dataset">Display Dataset</button>
+        <button id="show-user-manual">Show User Manual</button>
+    </div>
+
+    <div class="main-content">
+        <div class="chart-container" id="chart-container">
+            <h3>Chart Section</h3>
+            <div id="chart" style="width: 100%; height: 500px;"></div>
+        </div>
+
+        <!-- Dataset Container -->
+        <div id="dataset-container"></div>
+
+        <!-- User Manual Container -->
+        <div id="user-manual-container">
+            <h3>User Manual</h3>
+            <iframe src="https://docs.google.com/document/d/e/2PACX-1vQpw8VUhHkttovLlPrIQm-XBeu7OLaLBxY18fxPO_kQugo81WB_8J7tBhmxJp-NJpcsHbmak16SJFwZ/pub?embedded=true">
+            </iframe>
+            <button id="close-user-manual" style="margin-top: 10px;">Close User Manual</button>
+        </div>
+    </div>
+
+    <script>
+        let datasetVisible = false; // Tracks whether the dataset is visible
+
+        // Display Dataset
+        document.getElementById('display-dataset').addEventListener('click', function () {
+            const datasetContainer = document.getElementById('dataset-container');
+            if (!datasetVisible) {
+                datasetContainer.innerHTML = '<p>Loading dataset...</p>';
+                fetch('medcostsdata.php?type=display_dataset')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!Array.isArray(data)) {
+                            datasetContainer.innerHTML = '<p>Error: Invalid data format received.</p>';
+                            return;
+                        }
+
+                        // Create a table to display the dataset
+                        let tableHTML = '<table>';
+                        tableHTML += `
+                            <tr>
+                                <th>Age</th>
+                                <th>Sex</th>
+                                <th>BMI</th>
+                                <th>Children</th>
+                                <th>Smoker</th>
+                                <th>Region</th>
+                                <th>Medical Charges</th>
+                            </tr>
+                        `;
+                        data.forEach(row => {
+                            tableHTML += `
+                                <tr>
+                                    <td>${row.age}</td>
+                                    <td>${row.sex}</td>
+                                    <td>${parseFloat(row.bmi).toFixed(2)}</td>
+                                    <td>${row.children}</td>
+                                    <td>${row.smoker}</td>
+                                    <td>${row.region}</td>
+                                    <td>${parseFloat(row.medical_charges).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                        tableHTML += '</table>';
+                        datasetContainer.innerHTML = tableHTML;
+
+                        datasetVisible = true; // Mark dataset as visible
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        datasetContainer.innerHTML = '<p>Error loading dataset.</p>';
+                    });
+            } else {
+                datasetContainer.innerHTML = ''; // Hide the dataset
+                datasetVisible = false; // Mark dataset as hidden
+            }
+        });
+
+        // Load Google Charts library
+        google.charts.load('current', { packages: ['corechart'] });
+
+        // Generate Chart
+        document.getElementById('generate-chart').addEventListener('click', function () {
+            const selectedAttributes = Array.from(document.querySelectorAll('.attribute:checked')).map(attr => attr.value);
+
+            if (selectedAttributes.length === 0) {
+                alert('Please select at least one attribute');
+                return;
+            }
+
+            const chartType = document.getElementById('chart-type').value;
+
+            // Fetch data for the chart
+            fetch(`medcostsdata.php?type=generate_chart&attributes=${selectedAttributes.join(',')}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    // Prepare data for Google Charts
+                    const chartData = [['Attribute', 'Average Medical Cost']];
+                    data.labels.forEach((label, index) => {
+                        chartData.push([label, data.values[index]]);
+                    });
+
+                    // Convert data to Google Charts format
+                    const googleData = google.visualization.arrayToDataTable(chartData);
+
+                    // Set chart options
+                    const options = {
+                        title: `Average Medical Charges by ${selectedAttributes.join(', ')}`,
+                        hAxis: { title: 'Attributes' },
+                        vAxis: { title: 'Average Medical Charges' },
+                        legend: { position: 'top' },
+                        height: 500,
+                        width: '100%'
+                    };
+
+                    // Draw the chart
+                    const chartContainer = document.getElementById('chart');
+                    let chart;
+                    if (chartType === 'BarChart') {
+                        chart = new google.visualization.BarChart(chartContainer);
+                    } else if (chartType === 'LineChart') {
+                        chart = new google.visualization.LineChart(chartContainer);
+                    } else if (chartType === 'PieChart') {
+                        chart = new google.visualization.PieChart(chartContainer);
+                    }
+                    chart.draw(googleData, options);
+                })
+                .catch(error => {
+                    console.error('Error fetching chart data:', error);
+                    alert('An error occurred while generating the chart. Please try again.');
+                });
+        });
+
+        // Show User Manual
+        document.getElementById('show-user-manual').addEventListener('click', function () {
+            document.getElementById('user-manual-container').style.display = 'block';
+        });
+
+        // Close User Manual
+        document.getElementById('close-user-manual').addEventListener('click', function () {
+            document.getElementById('user-manual-container').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
